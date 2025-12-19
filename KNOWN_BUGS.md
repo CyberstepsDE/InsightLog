@@ -33,12 +33,7 @@
   - Since `.` matches any character in regex, this will match invalid patterns like "123a456b789c012" or "192.168.1.1.2.3".
   - Test with `analyze_auth_request("invalid user test from 123a456b789c012")` - it will incorrectly extract "123a456b789c012" as an IP.
 
-## 6. check_match uses re.match instead of re.search for regex patterns
-- **How to replicate:**
-  - Call `filter_data` with `is_regex=True` and a pattern that should match in the middle of a line.
-  - For example: `filter_data(r'\d+', data="abc123def", is_regex=True)`.
-  - The function uses `re.match()` which only matches at the start of the string, so it will fail to match.
-  - The docstring says "contains/matches" which suggests it should use `re.search()` instead.
+
 
 ## 7. _get_auth_year() has flawed year detection logic
 - **How to replicate:**
