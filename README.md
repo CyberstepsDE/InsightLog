@@ -58,6 +58,10 @@ We use Python's built-in `unittest` module for testing. To run the tests:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+## Fixed Issues
+
+Fixed an issue where the IPv4 regex incorrectly matched invalid IP-like strings. The regex now correctly matches dotted IPv4 addresses.
+
 
 ## License
 
