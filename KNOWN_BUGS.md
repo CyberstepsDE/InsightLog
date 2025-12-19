@@ -27,11 +27,6 @@
   - Returns `[]` for empty data.
   - This inconsistent return type (None vs empty list) can cause issues if code checks for one but not the other.
 
-## 5. IPv4_REGEX incorrectly matches invalid IP addresses
-- **How to replicate:**
-  - The regex pattern `r'(\d+.\d+.\d+.\d+)'` uses `.` instead of `\.` to match dots.
-  - Since `.` matches any character in regex, this will match invalid patterns like "123a456b789c012" or "192.168.1.1.2.3".
-  - Test with `analyze_auth_request("invalid user test from 123a456b789c012")` - it will incorrectly extract "123a456b789c012" as an IP.
 
 ## 6. check_match uses re.match instead of re.search for regex patterns
 - **How to replicate:**
