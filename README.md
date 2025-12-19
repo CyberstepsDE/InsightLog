@@ -58,6 +58,10 @@ We use Python's built-in `unittest` module for testing. To run the tests:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+### Recent Fixes
+
+- Fixed IPv4 regex to prevent matching invalid IP addresses.
+- Fixed regex filtering to match patterns anywhere in a log line (using `re.search`).
 
 ## License
 

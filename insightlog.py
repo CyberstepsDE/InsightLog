@@ -59,7 +59,7 @@ SERVICES_SWITCHER = {
     'auth': DEFAULT_AUTH
 }
 
-IPv4_REGEX = r'(\d+.\d+.\d+.\d+)'
+IPv4_REGEX = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
 AUTH_USER_INVALID_USER = r'(?i)invalid\suser\s(\w+)\s'
 AUTH_PASS_INVALID_USER = r'(?i)failed\spassword\sfor\s(\w+)\s'
 
@@ -123,13 +123,13 @@ def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().
 def check_match(line, filter_pattern, is_regex=False, is_casesensitive=True, is_reverse=False):
     """Check if line contains/matches filter pattern"""
     if is_regex:
-        check_result = re.match(filter_pattern, line) if is_casesensitive \
-            else re.match(filter_pattern, line, re.IGNORECASE)
+        check_result = re.search(filter_pattern, line) if is_casesensitive \
+            else re.search(filter_pattern, line, re.IGNORECASE)
     else:
         check_result = (filter_pattern in line) if is_casesensitive else (filter_pattern.lower() in line.lower())
     if is_reverse:
-        return not check_result
-    return check_result
+        return not bool(check_result)
+    return bool(check_result)
 
 
 def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_regex=False, is_reverse=False):
