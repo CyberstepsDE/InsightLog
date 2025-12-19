@@ -28,13 +28,6 @@
   - This inconsistent return type (None vs empty list) can cause issues if code checks for one but not the other.
 
 
-## 6. check_match uses re.match instead of re.search for regex patterns
-- **How to replicate:**
-  - Call `filter_data` with `is_regex=True` and a pattern that should match in the middle of a line.
-  - For example: `filter_data(r'\d+', data="abc123def", is_regex=True)`.
-  - The function uses `re.match()` which only matches at the start of the string, so it will fail to match.
-  - The docstring says "contains/matches" which suggests it should use `re.search()` instead.
-
 ## 7. _get_auth_year() has flawed year detection logic
 - **How to replicate:**
   - The function only checks if the current date is January 1st at midnight to determine if auth logs might be from the previous year.
