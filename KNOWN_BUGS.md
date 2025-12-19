@@ -27,11 +27,7 @@
   - Returns `[]` for empty data.
   - This inconsistent return type (None vs empty list) can cause issues if code checks for one but not the other.
 
-## 5. IPv4_REGEX incorrectly matches invalid IP addresses
-- **How to replicate:**
-  - The regex pattern `r'(\d+.\d+.\d+.\d+)'` uses `.` instead of `\.` to match dots.
-  - Since `.` matches any character in regex, this will match invalid patterns like "123a456b789c012" or "192.168.1.1.2.3".
-  - Test with `analyze_auth_request("invalid user test from 123a456b789c012")` - it will incorrectly extract "123a456b789c012" as an IP.
+
 
 ## 6. check_match uses re.match instead of re.search for regex patterns
 - **How to replicate:**
@@ -40,7 +36,6 @@
   - The function uses `re.match()` which only matches at the start of the string, so it will fail to match.
   - The docstring says "contains/matches" which suggests it should use `re.search()` instead.
 
-## 7. _get_auth_year() has flawed year detection logic
 - **How to replicate:**
   - The function only checks if the current date is January 1st at midnight to determine if auth logs might be from the previous year.
   - This logic is too narrow - auth logs from the previous year on any date (not just Jan 1) will be incorrectly assigned the current year.
