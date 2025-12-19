@@ -136,22 +136,18 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
     """Filter received data/file content and return the results"""
     return_data = ""
     if filepath:
-        try:
-            with open(filepath, 'r') as file_object:
-                for line in file_object:
-                    if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
-                        return_data += line
-            return return_data
-        except (IOError, EnvironmentError) as e:
-            print(e.strerror)
-            return None
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as file_object:
+            for line in file_object:
+                if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
+                    return_data += line
+        return return_data
     elif data:
         for line in data.splitlines():
             if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
-                return_data += line+"\n"
+                return_data += line + "\n"
         return return_data
     else:
-        raise Exception("Data and filepath values are NULL!")
+        raise ValueError("Data and filepath values are NULL!")
 
 
 def _get_iso_datetime(str_date, pattern, keys):
@@ -226,16 +222,12 @@ def analyze_auth_request(request_info):
 def apply_filters(filters, data=None, filepath=None):
     """Apply all filters to data or file and return filtered results"""
     if filepath:
-        try:
-            with open(filepath, 'r') as file_object:
-                filtered_lines = []
-                for line in file_object:
-                    if check_all_matches(line, filters):
-                        filtered_lines.append(line)
-                return ''.join(filtered_lines)
-        except (IOError, EnvironmentError) as e:
-            print(e.strerror)
-            return None
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as file_object:
+            filtered_lines = []
+            for line in file_object:
+                if check_all_matches(line, filters):
+                    filtered_lines.append(line)
+            return ''.join(filtered_lines)
     elif data:
         filtered_lines = []
         for line in data.splitlines():
@@ -243,7 +235,7 @@ def apply_filters(filters, data=None, filepath=None):
                 filtered_lines.append(line + "\n")
         return ''.join(filtered_lines)
     else:
-        raise Exception("Either data or filepath must be provided")
+        raise ValueError("Either data or filepath must be provided")
 
 
 def check_all_matches(line, filter_patterns):
@@ -267,18 +259,17 @@ def get_requests(service, data=None, filepath=None, filters=None):
     
     # Apply filters if provided
     if filters:
+        # apply_filters will now raise exception if file is missing
         filtered_data = apply_filters(filters, data=data, filepath=filepath)
     else:
         if filepath:
-            try:
-                with open(filepath, 'r') as f:
-                    filtered_data = f.read()
-            except (IOError, EnvironmentError) as e:
-                print(e.strerror)
-                return None
+            # Fix: Removed try-except, let it raise FileNotFoundError
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                filtered_data = f.read()
         else:
             filtered_data = data
     
+    # Standardize return: Empty list if no data, instead of None
     if not filtered_data:
         return []
     
@@ -292,7 +283,7 @@ def get_requests(service, data=None, filepath=None, filters=None):
     elif settings['type'] == 'auth':
         return get_auth_requests(filtered_data, request_pattern, date_pattern, date_keys)
     else:
-        return None
+        return []
 
 
 # CLI entry point
