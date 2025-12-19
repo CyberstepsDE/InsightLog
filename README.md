@@ -10,7 +10,7 @@ InsightLog is a Python script for extracting and analyzing data from server log 
 
 ## Installation
 
-Clone this repository:
+Clone this repository test:
 ```bash
 git clone https://github.com/CyberstepsDE/insightlog.git
 cd insightlog
