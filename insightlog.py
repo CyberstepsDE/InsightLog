@@ -99,24 +99,29 @@ def get_service_settings(service_name):
         raise Exception("Service \""+service_name+"\" doesn't exists!")
 
 
-def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().hour,
+def is_valid_hour(hour):
+    return hour is None or (isinstance(hour, int) and 0 <= hour <= 23)
+def is_valid_minute(minute):
+    return minute is None or (isinstance(minute, int) and 0 <= minute <= 59)
+def get_date_filter(settings, minute=None, hour=None,
                     day=datetime.now().day, month=datetime.now().month,
                     year=datetime.now().year):
     """Get the date pattern that can be used to filter data from logs based on the params"""
     if not is_valid_year(year) or not is_valid_month(month) or not is_valid_day(day) \
             or not is_valid_hour(hour) or not is_valid_minute(minute):
         raise Exception("Date elements aren't valid")
-    if minute != '*' and hour != '*':
+# invalid combination
+    if minute is not None and hour is None:
+        raise Exception("Minute cannot be set without hour")
+    if minute is not None and hour is not None:
         date_format = settings['dateminutes_format']
         date_filter = datetime(year, month, day, hour, minute).strftime(date_format)
-    elif minute == '*' and hour != '*':
+    elif hour is not None:
         date_format = settings['datehours_format']
         date_filter = datetime(year, month, day, hour).strftime(date_format)
-    elif minute == '*' and hour == '*':
+    else:
         date_format = settings['datedays_format']
         date_filter = datetime(year, month, day).strftime(date_format)
-    else:
-        raise Exception("Date elements aren't valid")
     return date_filter
 
 
