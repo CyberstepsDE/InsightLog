@@ -1,6 +1,6 @@
 import re
 import calendar
-from datetime import datetime
+from datetime import datetime , timedelta
 
 # Service settings
 DEFAULT_NGINX = {
@@ -158,22 +158,36 @@ def _get_iso_datetime(str_date, pattern, keys):
     """Change raw datetime from logs to ISO 8601 format."""
     months_dict = {v: k for k, v in enumerate(calendar.month_abbr)}
     matches = re.findall(pattern, str_date)
+
     if not matches:
         raise ValueError(f"Date pattern '{pattern}' did not match '{str_date}'")
+    
     a_date = matches[0]
-    d_datetime = datetime(int(a_date[keys['year']]) if 'year' in keys else _get_auth_year(),
-                          months_dict[a_date[keys['month']]], int(a_date[keys['day']].strip()),
-                          int(a_date[keys['hour']]), int(a_date[keys['minute']]), int(a_date[keys['second']]))
-    return d_datetime.isoformat(' ')
+    now = datetime.now()
 
-
-def _get_auth_year():
-    """Return the year when the requests happened"""
-    if datetime.now().month == 1 and datetime.now().day == 1 and datetime.now().hour == 0:
-        return datetime.now().year - 1
+    # Determine year
+    if 'year' in keys:
+        year = int(a_date[keys['year']])
     else:
-        return datetime.now().year
+        # Auth logs don't contain year → assume current year 
+        year = now.year     
 
+    # Build datetime with assumed year
+    log_datetime = datetime(
+        year,
+        months_dict[a_date[keys['month']]],
+        int(a_date[keys['day']].strip()),
+        int(a_date[keys['hour']]),
+        int(a_date[keys['minute']]),
+        int(a_date[keys['second']])
+    )
+
+    # If auth log datetime is in the future, it must be from last year
+    # Allow small tolerance (e.g. 1 day) for clock skew
+    if 'year' not in keys and log_datetime > now + timedelta(days=1):
+        log_datetime = log_datetime.replace(year=year - 1)
+
+    return log_datetime.isoformat(' ')
 
 def get_web_requests(data, pattern, date_pattern=None, date_keys=None):
     """Analyze data (from the logs) and return list of requests formatted as the model (pattern) defined."""
