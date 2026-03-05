@@ -59,7 +59,7 @@ SERVICES_SWITCHER = {
     'auth': DEFAULT_AUTH
 }
 
-IPv4_REGEX = r'(\d+.\d+.\d+.\d+)'
+IPv4_REGEX = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
 AUTH_USER_INVALID_USER = r'(?i)invalid\suser\s(\w+)\s'
 AUTH_PASS_INVALID_USER = r'(?i)failed\spassword\sfor\s(\w+)\s'
 
