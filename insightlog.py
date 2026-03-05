@@ -75,9 +75,12 @@ def is_valid_month(month):
     return 12 >= month > 0
 
 
-def is_valid_day(day):
-    """Check if day value is valid"""
-    return 31 >= day > 0
+def is_valid_day(day, month, year):
+    try:
+        datetime(year, month, day)
+        return True
+    except ValueError:
+        return False
 
 
 def is_valid_hour(hour):
@@ -99,13 +102,31 @@ def get_service_settings(service_name):
         raise Exception("Service \""+service_name+"\" doesn't exists!")
 
 
-def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().hour,
-                    day=datetime.now().day, month=datetime.now().month,
-                    year=datetime.now().year):
+def get_date_filter(settings, minute=None, hour=None, day=None, month=None, year=None):
+
+    now = datetime.now()
+    minute = now.minute if minute is None else minute
+    hour   = now.hour   if hour   is None else hour
+    day    = now.day    if day    is None else day
+    month  = now.month  if month  is None else month
+    year   = now.year   if year   is None else year
+
+    if minute != '*' and not isinstance(minute, int):
+        raise TypeError("minute must be int or '*'")
+    if hour != '*' and not isinstance(hour, int):
+        raise TypeError("hour must be int or '*'")
+    if day != '*' and not isinstance(day, int):
+        raise TypeError("day must be int or '*'")
+    if month != '*' and not isinstance(month, int):
+        raise TypeError("month must be int or '*'")
+    if year != '*' and not isinstance(year, int):
+        raise TypeError("year must be int or '*'")
+
     """Get the date pattern that can be used to filter data from logs based on the params"""
-    if not is_valid_year(year) or not is_valid_month(month) or not is_valid_day(day) \
+    if not is_valid_year(year) or not is_valid_month(month) or not is_valid_day(day, month, year) \
             or not is_valid_hour(hour) or not is_valid_minute(minute):
-        raise Exception("Date elements aren't valid")
+        raise ValueError("Date elements aren't valid")
+
     if minute != '*' and hour != '*':
         date_format = settings['dateminutes_format']
         date_filter = datetime(year, month, day, hour, minute).strftime(date_format)
@@ -116,7 +137,7 @@ def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().
         date_format = settings['datedays_format']
         date_filter = datetime(year, month, day).strftime(date_format)
     else:
-        raise Exception("Date elements aren't valid")
+        raise ValueError("Date elements aren't valid")
     return date_filter
 
 
@@ -260,11 +281,11 @@ def check_all_matches(line, filter_patterns):
 def get_requests(service, data=None, filepath=None, filters=None):
     """Analyze data and return list of requests. Main function to get parsed requests."""
     settings = get_service_settings(service)
-    
+
     # Determine filepath if not provided
     if not filepath and not data:
         filepath = settings['dir_path'] + settings['accesslog_filename']
-    
+
     # Apply filters if provided
     if filters:
         filtered_data = apply_filters(filters, data=data, filepath=filepath)
@@ -278,15 +299,15 @@ def get_requests(service, data=None, filepath=None, filters=None):
                 return None
         else:
             filtered_data = data
-    
+
     if not filtered_data:
         return []
-    
+
     # Parse requests based on service type
     request_pattern = settings['request_model']
     date_pattern = settings['date_pattern']
     date_keys = settings['date_keys']
-    
+
     if settings['type'] == 'web0':
         return get_web_requests(filtered_data, request_pattern, date_pattern, date_keys)
     elif settings['type'] == 'auth':
@@ -298,7 +319,7 @@ def get_requests(service, data=None, filepath=None, filters=None):
 # CLI entry point
 if __name__ == '__main__':
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Analyze server log files (nginx, apache2, auth)")
     parser.add_argument('--service', required=True, choices=['nginx', 'apache2', 'auth'], help='Type of log to analyze')
     parser.add_argument('--logfile', required=True, help='Path to the log file')
@@ -308,7 +329,7 @@ if __name__ == '__main__':
     filters = []
     if args.filter:
         filters.append({'filter_pattern': args.filter, 'is_casesensitive': True, 'is_regex': False, 'is_reverse': False})
-    
+
     requests = get_requests(args.service, filepath=args.logfile, filters=filters)
     if requests:
         for req in requests:
