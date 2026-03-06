@@ -1,12 +1,11 @@
 import re
 import calendar
-from datetime import datetime
+from datetime import datetime, timedelta
 import argparse
 import sys
 import csv
 import json
 import os
-
 import logging ### for error and warning logging ###
 
 logging.basicConfig(
@@ -34,12 +33,7 @@ DEFAULT_NGINX = {
     'date_keys': {'day': 0, 'month': 1, 'year': 2, 'hour': 3, 'minute': 4, 'second': 5}
 }
 
-def start_wizard():
-    print("\n--- InsightLog Wizard ---")
-    # Uses Settings as Suggestion
-    log_type = input("Log-Typ (nginx/apache2/auth) [nginx]: ") or "nginx"
-    file_path = input(f"Path towards File [{DEFAULT_NGINX['dir_path']}access.log]: ") or (DEFAULT_NGINX['dir_path'] + "access.log")
-    return file_path, log_type
+
 
 DEFAULT_APACHE2 = {
     'type': 'web0',
@@ -84,6 +78,15 @@ AUTH_USER_INVALID_USER = r'(?i)invalid\suser\s(\w+)\s'
 AUTH_PASS_INVALID_USER = r'(?i)failed\spassword\sfor\s(\w+)\s'
 
 
+
+def start_wizard():
+    print("\n--- InsightLog Wizard ---")
+    # Uses Settings as Suggestion
+    log_type = input("Log-Typ (nginx/apache2/auth) [nginx]: ") or "nginx"
+    file_path = input(f"Path towards File [{DEFAULT_NGINX['dir_path']}access.log]: ") or (DEFAULT_NGINX['dir_path'] + "access.log")
+    return file_path, log_type
+
+
 # Validator functions
 def is_valid_year(year):
     """Check if year's value is valid"""
@@ -113,13 +116,14 @@ def is_valid_minute(minute):
     return (minute == '*') or (59 >= minute >= 0)
 
 
+
 # Utility functions
 def get_service_settings(service_name):
     """Get default settings for the said service"""
     if service_name in SERVICES_SWITCHER:
         return SERVICES_SWITCHER.get(service_name)
     else:
-        raise Exception("Service \""+service_name+"\" doesn't exists!")
+        raise ValueError(f'Service "{service_name}" does not exist')
 
 
 def get_date_filter(settings, minute=None, hour=None, day=None, month=None, year=None):
@@ -216,10 +220,10 @@ def _get_auth_year(log_month, log_day, log_hour, log_minute, log_second, max_fut
         int(log_minute),
         int(log_second),
     )
-    
+
     if candidate - now > timedelta(days=max_future_days):
         return current_year - 1
-    
+
     return current_year
 
 
@@ -250,7 +254,7 @@ def _get_iso_datetime(str_date, pattern, keys):
         int(a_date[keys['hour']]),
         int(a_date[keys['minute']]),
         int(a_date[keys['second']]))
-    
+
     return d_datetime.isoformat(' ')
 
 
@@ -269,7 +273,7 @@ def get_web_requests(data, pattern, date_pattern=None, date_keys=None):
         except Exception as e:
             logging.warning(f"Skipping malformed web request: {request_tuple} ({e})") ### for error and warning logging ###
             continue
-            
+
         requests.append({'DATETIME': str_datetime, 'IP': request_tuple[0],
                          'METHOD': request_tuple[2], 'ROUTE': request_tuple[3], 'CODE': request_tuple[4],
                          'REFERRER': request_tuple[5], 'USERAGENT': request_tuple[6]})
@@ -289,7 +293,7 @@ def get_auth_requests(data, pattern, date_pattern=None, date_keys=None):
         except Exception as e:
             logging.warning(f"Skipping malformed auth request: {request_tuple} ({e})") ### for error and warning logging ###
             continue
-        
+
         data = analyze_auth_request(request_tuple[2])
         data['DATETIME'] = str_datetime
         data['SERVICE'] = request_tuple[1]
@@ -412,49 +416,49 @@ def export_results(requests, output_path="output"):
 
     print(f"Exported {len(requests)} records to both '{json_path}' and '{csv_path}'.")
 
-# CLI entry point
-if __name__ == '__main__':
-    import argparse
 
+def main():
     parser = argparse.ArgumentParser(description="Analyze server log files (nginx, apache2, auth)")
-    parser.add_argument('--service', required=True, choices=['nginx', 'apache2', 'auth'], help='Type of log to analyze')
-    parser.add_argument('--logfile', required=True, help='Path to the log file')
+    parser.add_argument('--service', choices=['nginx', 'apache2', 'auth'], help='Type of log to analyze')
+    parser.add_argument('--logfile', help='Path to the log file')
     parser.add_argument('--filter', required=False, default=None, help='String to filter log lines')
-    # Added the --export argument here
     parser.add_argument('--export', required=False, default=None, help='Base filename for export (creates both .json and .csv)')
-    args = parser.parse_args()
+
+    if len(sys.argv) == 1:
+        logfile, service = start_wizard()
+        filter_value = None
+        export_value = None
+    else:
+        args = parser.parse_args()
+
+        if not args.service or not args.logfile:
+            parser.error('--service and --logfile are required unless you start the wizard without arguments')
+
+        service = args.service
+        logfile = args.logfile
+        filter_value = args.filter
+        export_value = args.export
 
     filters = []
-    if args.filter:
-        filters.append({'filter_pattern': args.filter, 'is_casesensitive': True, 'is_regex': False, 'is_reverse': False})
+    if filter_value:
+        filters.append({
+            'filter_pattern': filter_value,
+            'is_casesensitive': True,
+            'is_regex': False,
+            'is_reverse': False
+        })
 
-    requests = get_requests(args.service, filepath=args.logfile, filters=filters)
+    requests = get_requests(service, filepath=logfile, filters=filters)
+
     if requests:
         for req in requests:
             print(req)
-
-#Main Logging Process
-def main():
-    parser = argparse.ArgumentParser(description='InsightLog: Analyse-Tool')
-    parser.add_argument('-f', '--file', help='Path towards Log-File')
-    parser.add_argument('-t', '--type', help='Log-type')
-
-    if len(sys.argv) == 1:
-        # Starting the Wizard
-        file_path, log_type = start_wizard()
     else:
-        args = parser.parse_args()
-        file_path, log_type = args.file, args.type
+        print("No requests found.")
 
-    # Starting the Analysing logic
-    if file_path and log_type:
-        print(f"\n Starting Analysing for {log_type} towards {file_path}")
-        # Inserting Main function
+    if export_value:
+        export_results(requests, output_path=export_value)
 
-if __name__ == "__main__":
+# CLI entry point
+if __name__ == '__main__':
     main()
-            
-        # Added the call to your new export function here
-        if args.export:
-            export_results(requests, output_path=args.export)
-#print(check_match(line="abc123def", filter_pattern=r"\d+", is_regex=True))
