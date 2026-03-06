@@ -1,6 +1,8 @@
 import re
 import calendar
 from datetime import datetime
+import argparse
+import sys
 import csv
 import json
 import os
@@ -23,6 +25,13 @@ DEFAULT_NGINX = {
     'date_pattern': r'(\d+)/(\w+)/(\d+):(\d+):(\d+):(\d+)',
     'date_keys': {'day': 0, 'month': 1, 'year': 2, 'hour': 3, 'minute': 4, 'second': 5}
 }
+
+def start_wizard():
+    print("\n--- InsightLog Wizard ---")
+    # Uses Settings as Suggestion
+    log_type = input("Log-Typ (nginx/apache2/auth) [nginx]: ") or "nginx"
+    file_path = input(f"Path towards File [{DEFAULT_NGINX['dir_path']}access.log]: ") or (DEFAULT_NGINX['dir_path'] + "access.log")
+    return file_path, log_type
 
 DEFAULT_APACHE2 = {
     'type': 'web0',
@@ -346,6 +355,27 @@ if __name__ == '__main__':
     if requests:
         for req in requests:
             print(req)
+
+#Main Logging Process
+def main():
+    parser = argparse.ArgumentParser(description='InsightLog: Analyse-Tool')
+    parser.add_argument('-f', '--file', help='Path towards Log-File')
+    parser.add_argument('-t', '--type', help='Log-type')
+
+    if len(sys.argv) == 1:
+        # Starting the Wizard
+        file_path, log_type = start_wizard()
+    else:
+        args = parser.parse_args()
+        file_path, log_type = args.file, args.type
+
+    # Starting the Analysing logic
+    if file_path and log_type:
+        print(f"\n Starting Analysing for {log_type} towards {file_path}")
+        # Inserting Main function
+
+if __name__ == "__main__":
+    main()
             
         # Added the call to your new export function here
         if args.export:
