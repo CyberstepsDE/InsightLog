@@ -165,6 +165,34 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
     else:
         raise Exception("Data and filepath values are NULL!")
 
+# ------------------------------------------------------------------
+# FIXED _get_auth_year() flawed year detection logic (for AUTH LOGS)
+# ------------------------------------------------------------------
+
+def _get_auth_year(log_month, log_day, log_hour, log_minute, log_second, max_future_days=7):
+    """Return the year when the requests happened"""
+    now = datetime.now()
+    current_year = now.year
+
+    try:
+        month_num = list(calendar.month_abbr).index(log_month)
+    except ValueError:
+        raise ValueError(f"Invalid month abbreviation in auth log: {log_month!r}")
+
+    candidate = datetime(
+        current_year,
+        month_num,
+        int(log_day),
+        int(log_hour),
+        int(log_minute),
+        int(log_second),
+    )
+    
+    if candidate - now > timedelta(days=max_future_days):
+        return current_year - 1
+    
+    return current_year
+
 
 def _get_iso_datetime(str_date, pattern, keys):
     """Change raw datetime from logs to ISO 8601 format."""
@@ -173,18 +201,27 @@ def _get_iso_datetime(str_date, pattern, keys):
     if not matches:
         raise ValueError(f"Date pattern '{pattern}' did not match '{str_date}'")
     a_date = matches[0]
-    d_datetime = datetime(int(a_date[keys['year']]) if 'year' in keys else _get_auth_year(),
-                          months_dict[a_date[keys['month']]], int(a_date[keys['day']].strip()),
-                          int(a_date[keys['hour']]), int(a_date[keys['minute']]), int(a_date[keys['second']]))
-    return d_datetime.isoformat(' ')
 
-
-def _get_auth_year():
-    """Return the year when the requests happened"""
-    if datetime.now().month == 1 and datetime.now().day == 1 and datetime.now().hour == 0:
-        return datetime.now().year - 1
+    if 'year' in keys:
+        year = int(a_date[keys['year']])
     else:
-        return datetime.now().year
+        year = _get_auth_year(
+            a_date[keys['month']],
+            a_date[keys['day']].strip(),
+            a_date[keys['hour']],
+            a_date[keys['minute']],
+            a_date[keys['second']],
+        )
+
+    d_datetime = datetime(
+        year,
+        months_dict[a_date[keys['month']]],
+        int(a_date[keys['day']].strip()),
+        int(a_date[keys['hour']]),
+        int(a_date[keys['minute']]),
+        int(a_date[keys['second']]))
+    
+    return d_datetime.isoformat(' ')
 
 
 def get_web_requests(data, pattern, date_pattern=None, date_keys=None):
