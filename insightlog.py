@@ -7,6 +7,14 @@ import csv
 import json
 import os
 
+import logging ### for error and warning logging ###
+
+logging.basicConfig(
+    filename='insightlog.log',
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
 # Service settings
 DEFAULT_NGINX = {
     'type': 'web0',
@@ -176,7 +184,7 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
                         return_data += line
             return return_data
         except (IOError, EnvironmentError) as e:
-            print(e.strerror)
+            logging.error(f"Could not open file '{filepath}': {e}") ### for error and warning logging ###
             return None
     elif data:
         for line in data.splitlines():
@@ -220,6 +228,7 @@ def _get_iso_datetime(str_date, pattern, keys):
     months_dict = {v: k for k, v in enumerate(calendar.month_abbr)}
     matches = re.findall(pattern, str_date)
     if not matches:
+        logging.warning(f"Malformed date skipped: '{str_date}' did not match pattern '{pattern}'") ### for error and warning logging ###
         raise ValueError(f"Date pattern '{pattern}' did not match '{str_date}'")
     a_date = matches[0]
 
@@ -252,10 +261,15 @@ def get_web_requests(data, pattern, date_pattern=None, date_keys=None):
     requests_dict = re.findall(pattern, data, flags=re.IGNORECASE)
     requests = []
     for request_tuple in requests_dict:
-        if date_pattern:
-            str_datetime = _get_iso_datetime(request_tuple[1], date_pattern, date_keys)
-        else:
-            str_datetime = request_tuple[1]
+        try:
+            if date_pattern:
+                str_datetime = _get_iso_datetime(request_tuple[1], date_pattern, date_keys)
+            else:
+                str_datetime = request_tuple[1]
+        except Exception as e:
+            logging.warning(f"Skipping malformed web request: {request_tuple} ({e})") ### for error and warning logging ###
+            continue
+            
         requests.append({'DATETIME': str_datetime, 'IP': request_tuple[0],
                          'METHOD': request_tuple[2], 'ROUTE': request_tuple[3], 'CODE': request_tuple[4],
                          'REFERRER': request_tuple[5], 'USERAGENT': request_tuple[6]})
@@ -267,10 +281,15 @@ def get_auth_requests(data, pattern, date_pattern=None, date_keys=None):
     requests_dict = re.findall(pattern, data)
     requests = []
     for request_tuple in requests_dict:
-        if date_pattern:
-            str_datetime = _get_iso_datetime(request_tuple[0], date_pattern, date_keys)
-        else:
-            str_datetime = request_tuple[0]
+        try:
+            if date_pattern:
+                str_datetime = _get_iso_datetime(request_tuple[0], date_pattern, date_keys)
+            else:
+                str_datetime = request_tuple[0]
+        except Exception as e:
+            logging.warning(f"Skipping malformed auth request: {request_tuple} ({e})") ### for error and warning logging ###
+            continue
+        
         data = analyze_auth_request(request_tuple[2])
         data['DATETIME'] = str_datetime
         data['SERVICE'] = request_tuple[1]
@@ -304,7 +323,7 @@ def apply_filters(filters, data=None, filepath=None):
                         filtered_lines.append(line)
                 return ''.join(filtered_lines)
         except (IOError, EnvironmentError) as e:
-            print(e.strerror)
+            logging.error(f"Could not open file '{filepath}': {e}") ### for error and warning logging ###
             return None
     elif data:
         filtered_lines = []
@@ -344,7 +363,7 @@ def get_requests(service, data=None, filepath=None, filters=None):
                 with open(filepath, 'r') as f:
                     filtered_data = f.read()
             except (IOError, EnvironmentError) as e:
-                print(e.strerror)
+                logging.error(f"Could not open file '{filepath}': {e}") ### for error and warning logging ###
                 return None
         else:
             filtered_data = data
