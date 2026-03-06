@@ -3,6 +3,9 @@ import calendar
 from datetime import datetime
 import argparse
 import sys
+import csv
+import json
+import os
 
 # Service settings
 DEFAULT_NGINX = {
@@ -68,7 +71,7 @@ SERVICES_SWITCHER = {
     'auth': DEFAULT_AUTH
 }
 
-IPv4_REGEX = r'(\d+.\d+.\d+.\d+)'
+IPv4_REGEX = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
 AUTH_USER_INVALID_USER = r'(?i)invalid\suser\s(\w+)\s'
 AUTH_PASS_INVALID_USER = r'(?i)failed\spassword\sfor\s(\w+)\s'
 
@@ -132,8 +135,8 @@ def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().
 def check_match(line, filter_pattern, is_regex=False, is_casesensitive=True, is_reverse=False):
     """Check if line contains/matches filter pattern"""
     if is_regex:
-        check_result = re.match(filter_pattern, line) if is_casesensitive \
-            else re.match(filter_pattern, line, re.IGNORECASE)
+        check_result = re.search(filter_pattern, line) if is_casesensitive \
+            else re.search(filter_pattern, line, re.IGNORECASE) #THE BUG FIXED re.match-->re.search
     else:
         check_result = (filter_pattern in line) if is_casesensitive else (filter_pattern.lower() in line.lower())
     if is_reverse:
@@ -304,6 +307,34 @@ def get_requests(service, data=None, filepath=None, filters=None):
         return None
 
 
+def export_results(requests, output_path="output"):
+    """
+    Export parsed requests to both CSV and JSON in the current working directory.
+    """
+    if not requests:
+        print("Nothing to export.")
+        return
+
+    # Extract just the base name to ensure files save in the current folder
+    base_name = os.path.splitext(os.path.basename(output_path))[0]
+    if not base_name:
+        base_name = "output"
+
+    # Export to JSON
+    json_path = f"{base_name}.json"
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(requests, f, indent=2, default=str)
+
+    # Export to CSV
+    csv_path = f"{base_name}.csv"
+    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+        # Using the keys from the first dictionary as the CSV column headers
+        writer = csv.DictWriter(f, fieldnames=requests[0].keys())
+        writer.writeheader()
+        writer.writerows(requests)
+
+    print(f"Exported {len(requests)} records to both '{json_path}' and '{csv_path}'.")
+
 # CLI entry point
 if __name__ == '__main__':
     import argparse
@@ -312,6 +343,8 @@ if __name__ == '__main__':
     parser.add_argument('--service', required=True, choices=['nginx', 'apache2', 'auth'], help='Type of log to analyze')
     parser.add_argument('--logfile', required=True, help='Path to the log file')
     parser.add_argument('--filter', required=False, default=None, help='String to filter log lines')
+    # Added the --export argument here
+    parser.add_argument('--export', required=False, default=None, help='Base filename for export (creates both .json and .csv)')
     args = parser.parse_args()
 
     filters = []
@@ -343,3 +376,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+            
+        # Added the call to your new export function here
+        if args.export:
+            export_results(requests, output_path=args.export)
+#print(check_match(line="abc123def", filter_pattern=r"\d+", is_regex=True))
